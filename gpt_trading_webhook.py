@@ -1,46 +1,44 @@
 from fastapi import FastAPI, Request
+from pydantic import BaseModel
+import os
 from openai import OpenAI
 from dotenv import load_dotenv
-import os
 
 load_dotenv()
 
-app = FastAPI()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-def analizuj_sygnal_z_gpt(dane: dict) -> str:
-    wiadomosc = (
-        f"Otrzymano dane z TradingView:\n"
-        f"Symbol: {dane.get('symbol')}\n"
-        f"Bayesian: {dane.get('bayesian')}\n"
-        f"MACD: {dane.get('macd')}\n"
-        f"Świeca: {dane.get('candle')}\n"
-        f"Strefa: {dane.get('zone')}\n\n"
-        f"Na podstawie powyższych danych, podaj rekomendację: LONG, SHORT czy BRAK."
-    )
+app = FastAPI()
 
-    odpowiedz = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": "Jesteś analitykiem rynków finansowych."},
-            {"role": "user", "content": wiadomosc}
-        ]
-    )
-
-    return odpowiedz.choices[0].message.content
-
-def wyslij_telegram(tresc: str):
-    # Tutaj możesz zaimplementować wysyłkę do Telegrama, np. przez requests.post
-    print(f"[TELEGRAM] {tresc}")
+class Alert(BaseModel):
+    symbol: str
+    bayesian: int
+    macd: str
+    candle: str
+    zone: str
 
 @app.post("/alert")
-async def odbierz_alert(request: Request):
-    dane = await request.json()
-    odpowiedz_gpt = analizuj_sygnal_z_gpt(dane)
+async def odbierz_alert(alert: Alert):
+    print("✅ Odebrano alert:", alert)
 
-    print("\n📢 Nowy alert z TradingView:", dane)
-    print("🤖 Odpowiedź GPT:", odpowiedz_gpt)
+    prompt = (
+        f"Otrzymano alert dla {alert.symbol}. "
+        f"MACD: {alert.macd}, świeca: {alert.candle}, strefa: {alert.zone}, bayes: {alert.bayesian}. "
+        "Czy to dobre miejsce do wejścia? Odpowiedz jednym zdaniem."
+    )
 
-    wyslij_telegram(f"🚨 Nowy alert z TV:\n{odpowiedz_gpt}")
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Jesteś ekspertem tradingowym."},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        odpowiedz = response.choices[0].message.content
+        print("📩 Odpowiedź GPT:", odpowiedz)
+        return {"ok": True, "gpt": odpowiedz}
 
-    return {"status": "ok", "odpowiedz": odpowiedz_gpt}
+    except Exception as e:
+        print("❌ Błąd GPT:", e)
+        return {"ok": False, "error": str(e)}
