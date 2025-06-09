@@ -56,8 +56,9 @@ async def odbierz_alert(request: Request):
     odpowiedz_gpt = analizuj_sygnal_z_gpt(dane)
     print("\n📩 Nowy alert z TradingView:", dane)
     print("🤖 Odpowiedź GPT:", odpowiedz_gpt)
-        wyslij_telegram(f"🔔 Nowy alert z TV:\n{odpowiedz_gpt}")
+    wyslij_telegram(f"🚨 Nowy alert z TV:\n{odpowiedz_gpt}")
     return {"status": "ok", "odpowiedz": odpowiedz_gpt}
+
 
 # === URUCHAMIANIE W RENDER.COM ===
 # Render automatycznie uruchomi: uvicorn gpt_trading_webhook:app
