@@ -1,3 +1,15 @@
+import requests
+
+TELEGRAM_TOKEN = "8180628484:AAFIU2s7tIoEs9LqZrrlTyIOvYrr2Wieo3Q"
+TELEGRAM_CHAT_ID = "5651741157"
+
+def wyslij_telegram(wiadomosc: str):
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": wiadomosc
+    }
+    requests.post(url, data=payload)
 from fastapi import FastAPI, Request
 import openai
 import os
@@ -44,6 +56,7 @@ async def odbierz_alert(request: Request):
     odpowiedz_gpt = analizuj_sygnal_z_gpt(dane)
     print("\n📩 Nowy alert z TradingView:", dane)
     print("🤖 Odpowiedź GPT:", odpowiedz_gpt)
+        wyslij_telegram(f"🔔 Nowy alert z TV:\n{odpowiedz_gpt}")
     return {"status": "ok", "odpowiedz": odpowiedz_gpt}
 
 # === URUCHAMIANIE W RENDER.COM ===
