@@ -1,4 +1,4 @@
-import requests
+from openai import OpenAI
 
 TELEGRAM_TOKEN = "8180628484:AAFIU2s7tIoEs9LqZrrlTyIOvYrr2Wieo3Q"
 TELEGRAM_CHAT_ID = "5651741157"
@@ -38,14 +38,15 @@ def analizuj_sygnal_z_gpt(dane: dict) -> str:
     - Fibo strefa: {dane.get('zone')}
     """
 
-    odpowiedz = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": "Jesteś asystentem tradera. Oceniaj dane techniczne po polsku."},
-            {"role": "user", "content": wiadomosc}
-        ],
-        temperature=0.2
-    )
+   client = OpenAI()
+odpowiedz = client.chat.completions.create(
+    model="gpt-4",
+    messages=[
+        {"role": "system", "content": "Jesteś asystentem tradera. Oceniaj dane techniczne po polsku."},
+        {"role": "user", "content": wiadomosc}
+    ],
+    temperature=0.2
+)
 
     return odpowiedz.choices[0].message.content
 
