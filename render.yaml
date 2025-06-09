@@ -1,4 +1,6 @@
-fastapi
-uvicorn
-openai
-python-dotenv
+services:
+  - type: web
+    name: gpt-trading-webhook
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn gpt_trading_webhook:app --host 0.0.0.0 --port 10000"
