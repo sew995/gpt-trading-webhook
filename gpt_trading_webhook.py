@@ -4,9 +4,9 @@ import os
 from openai import OpenAI
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv()  # wczytaj API KEY z .env lub Render > Environment
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))  # poprawne użycie klienta v1
 
 app = FastAPI()
 
@@ -35,9 +35,9 @@ async def odbierz_alert(alert: Alert):
                 {"role": "user", "content": prompt}
             ]
         )
-        odpowiedz = response.choices[0].message.content
-        print("📩 Odpowiedź GPT:", odpowiedz)
-        return {"ok": True, "gpt": odpowiedz}
+        gpt_odpowiedz = response.choices[0].message.content
+        print("📩 GPT:", gpt_odpowiedz)
+        return {"ok": True, "gpt": gpt_odpowiedz}
 
     except Exception as e:
         print("❌ Błąd GPT:", e)
