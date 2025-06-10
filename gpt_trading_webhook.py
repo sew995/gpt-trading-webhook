@@ -1,13 +1,18 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from pydantic import BaseModel
-import os, requests
+import os
 from openai import OpenAI
+import requests
 from dotenv import load_dotenv
 
 load_dotenv()
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Klucze środowiskowe
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
+client = OpenAI(api_key=OPENAI_API_KEY)
 app = FastAPI()
 
 class Alert(BaseModel):
@@ -17,16 +22,17 @@ class Alert(BaseModel):
     candle: str
     zone: str
 
-def wyslij_telegram(wiadomosc):
-    token = os.getenv("TELEGRAM_TOKEN")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID")
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
+def send_telegram(message: str):
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
-        "chat_id": chat_id,
-        "text": wiadomosc
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": message
     }
-    response = requests.post(url, data=payload)
-    print("📬 TELEGRAM:", response.status_code, response.text)
+    try:
+        response = requests.post(url, json=payload)
+        response.raise_for_status()
+    except Exception as e:
+        print("❌ Błąd wysyłania Telegram:", e)
 
 @app.post("/alert")
 async def odbierz_alert(alert: Alert):
@@ -49,15 +55,12 @@ async def odbierz_alert(alert: Alert):
         gpt_odpowiedz = response.choices[0].message.content
         print("📩 GPT:", gpt_odpowiedz)
 
-        wiadomosc = (
-            f"📈 Alert dla {alert.symbol}:\n"
-            f"MACD: {alert.macd}, świeca: {alert.candle}, strefa: {alert.zone}, bayes: {alert.bayesian}\n"
-            f"🤖 GPT: {gpt_odpowiedz}"
-        )
-        wyslij_telegram(wiadomosc)
+        # Wysyłka do Telegrama
+        send_telegram(f"🔔 ALERT dla {alert.symbol}\nGPT: {gpt_odpowiedz}")
 
         return {"ok": True, "gpt": gpt_odpowiedz}
 
     except Exception as e:
         print("❌ Błąd GPT:", e)
+        send_telegram("⚠️ Błąd przetwarzania alertu przez GPT.")
         return {"ok": False, "error": str(e)}
