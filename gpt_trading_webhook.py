@@ -19,7 +19,6 @@ class Alert(BaseModel):
     symbol: str
     bayesian: int
     macd: str
-    candle: str
     zone: str
 
 def send_telegram(message: str):
@@ -35,13 +34,28 @@ def send_telegram(message: str):
         print("❌ Błąd wysyłania Telegram:", e)
 
 @app.post("/alert")
-async def odbierz_alert(alert: Alert):
-    print("✅ Odebrano alert:", alert)
+async def alert_endpoint(payload: Alert):
+    # Warunki strategii
+    if payload.bayesian >= 80 and payload.zone.lower() == "tak":
+        if payload.macd.lower() == "bullish":
+            direction = "LONG"
+        elif payload.macd.lower() == "bearish":
+            direction = "SHORT"
+        else:
+            return {"ok": False, "msg": "Nieznany kierunek MACD"}
+    else:
+        return {"ok": False, "msg": "Warunki nie spełnione"}
 
+    # Wiadomość dla Telegrama
+    message = f"🔔 {payload.symbol.upper()} {direction}"
+    send_telegram(message)
+
+    # Wysyłka do GPT dla komentarza
     prompt = (
-        f"Otrzymano alert dla {alert.symbol}. "
-        f"MACD: {alert.macd}, świeca: {alert.candle}, strefa: {alert.zone}, bayes: {alert.bayesian}. "
-        "Czy to dobre miejsce do wejścia? Odpowiedz jednym zdaniem."
+        f"Otrzymano alert dla {payload.symbol.upper()}.\n"
+        f"Kierunek: {direction}\n"
+        f"MACD: {payload.macd}, strefa: {payload.zone}, bayesian: {payload.bayesian}.\n"
+        f"Czy to dobre miejsce do wejścia? Odpowiedz jednym zdaniem."
     )
 
     try:
@@ -52,14 +66,9 @@ async def odbierz_alert(alert: Alert):
                 {"role": "user", "content": prompt}
             ]
         )
-        gpt_odpowiedz = response.choices[0].message.content
-        print("📩 GPT:", gpt_odpowiedz)
-
-        # Wysyłka do Telegrama
-        send_telegram(f"🔔 ALERT dla {alert.symbol}\nGPT: {gpt_odpowiedz}")
-
-        return {"ok": True, "gpt": gpt_odpowiedz}
-
+        gpt_answer = response.choices[0].message.content
+        send_telegram(f"🧠 GPT: {gpt_answer}")
+        return {"ok": True, "msg": message, "gpt": gpt_answer}
     except Exception as e:
         print("❌ Błąd GPT:", e)
         send_telegram("⚠️ Błąd przetwarzania alertu przez GPT.")
